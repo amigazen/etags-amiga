@@ -129,10 +129,50 @@ int main(int ac, char *av[])
 
   while (ac > 1 && av[1][0] == '-')
     {
-      for (i=1; av[1][i]; i++)
+      /* Handle long options */
+      if (av[1][1] == '-')
 	{
-	  switch(av[1][i])
+	  if (strcmp(av[1], "--help") == 0)
 	    {
+	      goto usage;
+	    }
+	  else if (strcmp(av[1], "--version") == 0)
+	    {
+	      fprintf(stderr, "%s (GNU Emacs) 1.0\n", progname);
+	      fprintf(stderr, "Copyright (C) 1984, 1987, 1988 Free Software Foundation, Inc.\n");
+	      fprintf(stderr, "This is free software; see the source for copying conditions.\n");
+	      fprintf(stderr, "There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
+	      exit(GOOD);
+	    }
+	  else if (strncmp(av[1], "--file=", 7) == 0)
+	    {
+	      if (fflag > 0)
+		{
+		  fprintf(stderr, "%s: -f flag may only be given once\n", progname);
+		  goto usage;
+		}
+	      fflag++;
+	      outfile = av[1] + 7;
+	      if (*outfile == '\0')
+		{
+		  fprintf(stderr, "%s: --file= requires a filename\n", progname);
+		  goto usage;
+		}
+	    }
+	  else
+	    {
+	      fprintf(stderr, "%s: unrecognized option '%s'\n", progname, av[1]);
+	      fprintf(stderr, "Try '%s --help' for more information.\n", progname);
+	      exit(BAD);
+	    }
+	}
+      else
+	{
+	  /* Handle short options */
+	  for (i=1; av[1][i]; i++)
+	    {
+	      switch(av[1][i])
+		{
 #ifndef VMS  /* These options are useful only with ctags,
 		and VMS can't input them, so just omit them.  */
 	    case 'B':
@@ -189,8 +229,11 @@ int main(int ac, char *av[])
 	      eflag = 0;
 	      break;
 	    default:
-	      goto usage;
+	      fprintf(stderr, "%s: invalid option -- %c\n", progname, av[1][i]);
+	      fprintf(stderr, "Try '%s --help' for more information.\n", progname);
+	      exit(BAD);
 	    }
+	}
 	}
     end_loop: ;
       ac--; av++;
@@ -199,11 +242,35 @@ int main(int ac, char *av[])
   if (ac <= 1)
     {
     usage:
-#ifdef VMS
-      fprintf (stderr, "Usage: %s [-aetwvx] [-f outfile] file ...\n", progname);
-#else
-      fprintf (stderr, "Usage: %s [-BFaetuwvx] [-f outfile] file ...\n", progname);
-#endif
+      fprintf(stderr, "Usage: %s [OPTION]... [FILE]...\n", progname);
+      fprintf(stderr, "Generate tag file for Emacs from source files.\n");
+      fprintf(stderr, "\n");
+      fprintf(stderr, "Mandatory arguments to long options are mandatory for short options too.\n");
+      fprintf(stderr, "  -a, --append              append to existing tag file\n");
+      fprintf(stderr, "  -B, --backward-search     use ?...? regexp delimiter (ctags mode)\n");
+      fprintf(stderr, "  -e, --emacs               make Emacs-style tag file (default)\n");
+      fprintf(stderr, "  -f, --file=FILE           write output to specified file\n");
+      fprintf(stderr, "  -F, --forward-search      use /.../ regexp delimiter (ctags mode)\n");
+      fprintf(stderr, "  -t, --typedefs            include typedefs\n");
+      fprintf(stderr, "  -u, --update              update existing tag file\n");
+      fprintf(stderr, "  -v, --vgrind              make vgrind style index\n");
+      fprintf(stderr, "  -w, --no-warn             suppress warning messages\n");
+      fprintf(stderr, "  -x, --cxref               make cxref style index\n");
+      fprintf(stderr, "\n");
+      fprintf(stderr, "Supported file types:\n");
+      fprintf(stderr, "  C/C++: .c, .h, .y files\n");
+      fprintf(stderr, "  Lisp: .l, .el, .lsp, .lisp, .cl, .clisp files\n");
+      fprintf(stderr, "  Scheme: .scm, .sm, .scheme, .t, .sch files\n");
+      fprintf(stderr, "  TeX/LaTeX: .tex, .aux, .bbl files\n");
+      fprintf(stderr, "  Fortran: other files with appropriate extensions\n");
+      fprintf(stderr, "\n");
+      fprintf(stderr, "Examples:\n");
+      fprintf(stderr, "  %s *.c *.h                # Create TAGS file for C sources\n", progname);
+      fprintf(stderr, "  %s -a -f mytags *.c       # Append to mytags file\n", progname);
+      fprintf(stderr, "  %s -t -f typedefs *.h     # Include typedefs in output\n", progname);
+      fprintf(stderr, "\n");
+      fprintf(stderr, "Report bugs to: <bug-gnu-emacs@gnu.org>\n");
+      fprintf(stderr, "GNU Emacs home page: <https://www.gnu.org/software/emacs/>\n");
       exit(BAD);
     }
 

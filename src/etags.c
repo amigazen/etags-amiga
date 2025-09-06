@@ -19,8 +19,7 @@ In other words, you are welcome to use, share and improve this program.
 You are forbidden to forbid anyone else to use, share and improve
 what you give them.   Help stamp out software-hoarding!  */
 
-#include <stdio.h>
-#include <ctype.h>
+#include "main.h"
 
 /* Define the symbol ETAGS to make the program "etags",
  which makes emacs-style tag tables by default.
@@ -36,57 +35,14 @@ what you give them.   Help stamp out software-hoarding!  */
 #endif
 #endif
 
-/* Exit codes for success and failure.  */
-
-#ifdef VMS
-#define	GOOD	(1)
-#define BAD	(0)
-#else
-#define	GOOD	(0)
-#define	BAD	(1)
-#endif
-
-#define	reg	register
-#define	logical	char
-
-#define	TRUE	(1)
-#define	FALSE	(0)
-
-#define	iswhite(arg)	(_wht[arg])	/* T if char is white		*/
-#define	begtoken(arg)	(_btk[arg])	/* T if char can start token	*/
-#define	intoken(arg)	(_itk[arg])	/* T if char can be in token	*/
-#define	endtoken(arg)	(_etk[arg])	/* T if char ends tokens	*/
-#define	isgood(arg)	(_gd[arg])	/* T if char can be after ')'	*/
-
-#define	max(I1,I2)	(I1 > I2 ? I1 : I2)
-
-/* cause token checking for typedef, struct, union, enum to distinguish
-   keywords from identifier-prefixes (e.g. struct vs struct_tag).  */
-#define istoken(s, tok, len) (!strncmp(s,tok,len) && endtoken(*((s)+(len))))
-
-struct	nd_st {			/* sorting structure			*/
-	char	*name;			/* function or type name	*/
-	char	*file;			/* file name			*/
-	logical f;			/* use pattern or line no	*/
-	int	lno;			/* line number tag is on	*/
-	long    cno;			/* character number line starts on */
-	char	*pat;			/* search pattern		*/
-	logical	been_warned;		/* set if noticed dup		*/
-	struct	nd_st	*left,*right;	/* left and right sons		*/
-};
-
-long	ftell();
-typedef	struct	nd_st	NODE;
+/* Definitions moved to main.h */
 
 int number; /* tokens found so far on line starting with # (including #) */
 logical gotone,				/* found a func already on line	*/
 					/* boolean "func" (see init)	*/
 	_wht[0177],_etk[0177],_itk[0177],_btk[0177],_gd[0177];
 
-	/* typedefs are recognized using a simple finite automata,
-	 * tydef is its state variable.
-	 */
-typedef enum {none, begin, tag_ok, middle, end } TYST;
+/* TYST typedef moved to main.h */
 
 TYST tydef = none;
 
@@ -126,24 +82,9 @@ FILE	*inf,			/* ioptr for current input file		*/
 
 NODE	*head;			/* the head of the sorted binary tree	*/
 
-char *savestr();
-char *savenstr ();
-char *rindex();
-char *index();
-char *concat ();
-void initbuffer ();
-long readline ();
+/* Function prototypes moved to main.h */
 
-/* A `struct linebuffer' is a structure which holds a line of text.
- `readline' reads a line from a stream into a linebuffer
- and works regardless of the length of the line.  */
-
-struct linebuffer
-  {
-    long size;
-    char *buffer;
-  };
-
+/* struct linebuffer definition moved to main.h */
 struct linebuffer lb, lb1;
 
 #if 0  /* VMS now provides the `system' function.  */
@@ -165,9 +106,7 @@ system (buf)
 #endif /* VMS */
 #endif /* 0 */
 
-main(ac,av)
-     int	ac;
-     char	*av[];
+int main(int ac, char *av[])
 {
   char cmd[100];
   int i;
@@ -383,7 +322,7 @@ main(ac,av)
  * subscripted by the chars in "white" are set to TRUE.  Thus "_wht"
  * of a char is TRUE if it is the string "white", else FALSE.
  */
-init()
+void init(void)
 {
 
   reg char *sp;
@@ -415,8 +354,7 @@ init()
  * This routine opens the specified file and calls the function
  * which finds the function and type definitions.
  */
-find_entries (file)
-     char *file;
+void find_entries(char *file)
 {
   char *cp;
 
@@ -427,7 +365,7 @@ find_entries (file)
       return;
     }
   curfile = savestr(file);
-  cp = rindex(file, '.');
+  cp = strrchr_custom(file, '.');
   /* .tex, .aux or .bbl implies LaTeX source code */
   if (cp && (!strcmp (cp + 1, "tex") || !strcmp (cp + 1, "aux")
 	     || !strcmp (cp + 1, "bbl")))
@@ -483,9 +421,7 @@ find_entries (file)
 
 /* Nonzero if string STR is composed of digits.  */
 
-int
-string_numeric_p (str)
-     char *str;
+int string_numeric_p(char *str)
 {
   while (*str)
     {
@@ -499,37 +435,31 @@ string_numeric_p (str)
   name is the tag name,
   f is nonzero to use a pattern, zero to use line number instead. */
 
-pfnote (name, f, linestart, linelen, lno, cno)
-     char *name;
-     logical f;			/* f == TRUE when function */
-     char *linestart;
-     int linelen;
-     int lno;
-     long cno;
+void pfnote(char *name, logical f, char *linestart, int linelen, int lno, long cno)
 {
   register char *fp;
   register NODE *np;
   char *altname;
   char tem[51];
 
-  if ((np = (NODE *) malloc (sizeof (NODE))) == NULL)
+  if ((np = (NODE *) malloc(sizeof(NODE))) == NULL)
     {
       fprintf(stderr, "%s: too many entries to sort\n", progname);
       put_entries(head);
       free_tree(head);
       head = NULL;
-      np = (NODE *) xmalloc(sizeof (NODE));
+      np = (NODE *) xmalloc(sizeof(NODE));
     }
   /* Change name "main" to M<thisfilename>. */
   if (!eflag && !xflag && !strcmp(name, "main"))
     {
-      fp = rindex(curfile, '/');
+      fp = strrchr_custom(curfile, '/');
       if (fp == 0)
 	fp = curfile;
       else
 	fp++;
       altname = concat ("M", fp, "");
-      fp = rindex(altname, '.');
+      fp = strrchr_custom(altname, '.');
       if (fp && fp[2] == 0)
 	*fp = 0;
       name = altname;
@@ -556,8 +486,7 @@ pfnote (name, f, linestart, linelen, lno, cno)
     add_node(np, head);
 }
 
-free_tree(node)
-     NODE *node;
+void free_tree(NODE *node)
 {
   while (node)
     {
@@ -567,8 +496,7 @@ free_tree(node)
     }
 }
 
-add_node(node, cur_node)
-     NODE *node,*cur_node;
+void add_node(NODE *node, NODE *cur_node)
 {
   register int dif;
 
@@ -611,8 +539,7 @@ add_node(node, cur_node)
     cur_node->right = node;
 }
 
-put_entries(node)
-     reg NODE *node;
+void put_entries(NODE *node)
 {
   reg char *sp;
 
@@ -626,7 +553,7 @@ put_entries(node)
 
   if (eflag)
     {
-      fprintf (outf, "%s%c%d,%d\n",
+      fprintf (outf, "%s%c%d,%ld\n",
 	       node->pat, 0177, node->lno, node->cno);
     }
   else if (!xflag)
@@ -668,8 +595,7 @@ put_entries(node)
  the nodes in the subtree of the specified node.
  Works only if eflag is set, but called only in that case.  */
 
-total_size_of_entries(node)
-     reg NODE *node;
+int total_size_of_entries(NODE *node)
 {
   reg int total = 0;
   reg long num;
@@ -729,10 +655,10 @@ long vmslinecharno;
   number = 0; \
 }
 
-C_entries ()
+void C_entries(void)
 {
   register int c;
-  register char *token, *tp, *lp;
+  register char *token = NULL, *tp = NULL, *lp;
   logical incomm, inquote, inchar, midtoken;
   int level;
   char tok[BUFSIZ];
@@ -852,7 +778,7 @@ C_entries ()
 #ifdef VMS
 			  getline (vmslinestart);
 #else
-			  getline (linestart);
+			  get_line (linestart);
 #endif
 			  strncpy (tok, token + (lb1.buffer - buf),
 				   tp-token+1);
@@ -890,9 +816,7 @@ C_entries ()
  * It updates the input line * so that the '(' will be
  * in it when it returns.
  */
-consider_token (lpp, token, f, level)
-     char **lpp, *token;
-     int *f, level;
+int consider_token(char **lpp, char *token, int *f, int level)
 {
   reg char *lp = *lpp;
   reg char c;
@@ -1009,8 +933,7 @@ ret:
   return !bad && win;
 }
 
-getline (atchar)
-     long atchar;
+void get_line(long atchar)
 {
   long saveftell = ftell (inf);
 
@@ -1024,8 +947,7 @@ getline (atchar)
 char	*dbp;
 int	pfcnt;
 
-PF_funcs(fi)
-     FILE *fi;
+int PF_funcs(FILE *fi)
 {
   lineno = 0;
   charno = 0;
@@ -1101,8 +1023,7 @@ PF_funcs(fi)
   return (pfcnt);
 }
 
-tail(cp)
-     char *cp;
+int tail(char *cp)
 {
   register int len = 0;
 
@@ -1116,7 +1037,7 @@ tail(cp)
   return (0);
 }
 
-takeprec()
+void takeprec(void)
 {
   while (isspace(*dbp))
     dbp++;
@@ -1135,7 +1056,7 @@ takeprec()
   while (isdigit(*dbp));
 }
 
-getit()
+void getit(void)
 {
   register char *cp;
   char c;
@@ -1143,7 +1064,7 @@ getit()
 
   while (isspace(*dbp))
     dbp++;
-  if (*dbp == 0 || (!isalpha (*dbp)) && (*dbp != '_') && (*dbp != '$'))
+  if (*dbp == 0 || ((!isalpha (*dbp)) && (*dbp != '_') && (*dbp != '$')))
     return;
   for (cp = dbp + 1; *cp && (isalpha (*cp) || isdigit (*cp)
 			     || (*cp == '_') || (*cp == '$')); cp++)
@@ -1161,8 +1082,7 @@ getit()
  * just look for (def or (DEF
  */
 
-L_funcs (fi)
-     FILE *fi;
+void L_funcs(FILE *fi)
 {
   lineno = 0;
   charno = 0;
@@ -1186,7 +1106,7 @@ L_funcs (fi)
     }
 }
 
-L_getit()
+void L_getit(void)
 {
   register char *cp;
   char c;
@@ -1211,9 +1131,8 @@ L_getit()
  * look for (set! xyzzy
  */
 
-static get_scheme ();
-Scheme_funcs (fi)
-     FILE *fi;
+static void get_scheme(void);
+void Scheme_funcs(FILE *fi)
 {
   lineno = 0;
   charno = 0;
@@ -1250,8 +1169,7 @@ Scheme_funcs (fi)
     }
 }
 
-static
-get_scheme()
+static void get_scheme(void)
 {
   register char *cp;
   char c;
@@ -1278,12 +1196,6 @@ get_scheme()
 /* TEX_toktab is a table of TeX control sequences that define tags.
    Each TEX_tabent records one such control sequence.  */
 
-struct TEX_tabent
-{
-  char *name;
-  int len;
-};
-
 struct TEX_tabent *TEX_toktab = NULL; /* Table with tag tokens */
 
 /* Default set of control sequences to put into TEX_toktab.
@@ -1292,7 +1204,7 @@ struct TEX_tabent *TEX_toktab = NULL; /* Table with tag tokens */
 static char *TEX_defenv =
   ":chapter:section:subsection:subsubsection:eqno:label:ref:cite:bibitem:typeout";
 
-struct TEX_tabent *TEX_decode_env (); 
+/* Function declaration moved to main.h */
 
 static char TEX_esc = '\\';
 static char TEX_opgrp = '{';
@@ -1302,8 +1214,7 @@ static char TEX_clgrp = '}';
  * TeX/LaTeX scanning loop.
  */
 
-TEX_funcs (fi)
-    FILE *fi;
+void TEX_funcs(FILE *fi)
 {
   char *lasthit;
 
@@ -1325,7 +1236,7 @@ TEX_funcs (fi)
       charno += readline (&lb, fi) + 1;
       dbp = lb.buffer;
       lasthit = dbp;
-      while (dbp = index (dbp, TEX_esc)) /* Look at each escape in line */
+      while ((dbp = strchr_custom (dbp, TEX_esc)) != NULL) /* Look at each escape in line */
 	{
 	  register int i;
 
@@ -1350,8 +1261,7 @@ TEX_funcs (fi)
 /* Figure out whether TeX's escapechar is '\\' or '!' and set grouping */
 /* chars accordingly. */
 
-TEX_mode (f)
-     FILE *f;
+void TEX_mode(FILE *f)
 {
   int c, skip_line = 0;
 
@@ -1385,13 +1295,9 @@ TEX_mode (f)
 /* Read environment and prepend it to the default string. */
 /* Build token table. */
 
-struct TEX_tabent *
-TEX_decode_env (evarname, defenv)
-     char *evarname;
-     char *defenv;
+struct TEX_tabent *TEX_decode_env(char *evarname, char *defenv)
 {
   register char *env, *p;
-  extern char *savenstr (), *index ();
 
   struct TEX_tabent *tab;
   int size, i;
@@ -1405,16 +1311,16 @@ TEX_decode_env (evarname, defenv)
 
   /* Allocate a token table */
   for (size = 1, p=env; p;)
-    if ((p = index (p, ':')) && *(++p))
+    if ((p = strchr_custom (p, ':')) && *(++p))
       size++;
-  tab = (struct TEX_tabent *) xmalloc ((size + 1)
-				       * sizeof (struct TEX_tabent));
+  tab = (struct TEX_tabent *) xmalloc((size + 1)
+				       * sizeof(struct TEX_tabent));
 
   /* Unpack environment string into token table. Be careful about */
   /* zero-length strings (leading ':', "::" and trailing ':') */
   for (i = 0; *env;)
     {
-      p = index (env, ':');
+      p = strchr_custom (env, ':');
       if (!p)			/* End of environment string. */
 	p = env + strlen (env);
       if (p - env > 0)
@@ -1439,9 +1345,7 @@ TEX_decode_env (evarname, defenv)
    The name being defined actually starts at (NAME + LEN + 1).
    But we seem to include the TeX command in the tag name.  */
 
-TEX_getit (name, len)
-    char *name;
-    int len;
+void TEX_getit(char *name, int len)
 {
   char *p = name + len;
   char nambuf[BUFSIZ];
@@ -1464,8 +1368,7 @@ TEX_getit (name, len)
 
 /* Keep the capital `T' in `Token' for dumb truncating compilers
    (this distinguishes it from `TEX_toktab' */
-TEX_Token (cp)
-    char *cp;
+int TEX_Token(char *cp)
 {
   int i;
 
@@ -1477,21 +1380,16 @@ TEX_Token (cp)
 
 /* Initialize a linebuffer for use */
 
-void
-initbuffer (linebuffer)
-     struct linebuffer *linebuffer;
+void initbuffer(struct linebuffer *linebuffer)
 {
   linebuffer->size = 200;
-  linebuffer->buffer = (char *) xmalloc (200);
+  linebuffer->buffer = (char *) xmalloc(200);
 }
 
 /* Read a line of text from `stream' into `linebuffer'.
  Return the length of the line.  */
 
-long
-readline (linebuffer, stream)
-     struct linebuffer *linebuffer;
-     register FILE *stream;
+long readline(struct linebuffer *linebuffer, FILE *stream)
 {
   char *buffer = linebuffer->buffer;
   register char *p = linebuffer->buffer;
@@ -1505,7 +1403,7 @@ readline (linebuffer, stream)
       if (p == pend)
 	{
 	  linebuffer->size *= 2;
-	  buffer = (char *) xrealloc (buffer, linebuffer->size);
+	  buffer = (char *) xrealloc(buffer, linebuffer->size);
 	  p += buffer - linebuffer->buffer;
 	  pend = buffer + linebuffer->size;
 	  linebuffer->buffer = buffer;
@@ -1521,21 +1419,16 @@ readline (linebuffer, stream)
   return p - buffer;
 }
 
-char *
-savestr(cp)
-     char *cp;
+char *savestr(char *cp)
 {
   return savenstr (cp, strlen (cp));
 }
 
-char *
-savenstr(cp, len)
-    char *cp;
-    int len;
+char *savenstr(char *cp, int len)
 {
   register char *dp;
 
-  dp = (char *) xmalloc (len + 1);
+  dp = (char *) xmalloc(len + 1);
   strncpy (dp, cp, len);
   dp[len] = '\0';
   return dp;
@@ -1548,9 +1441,7 @@ savenstr(cp, len)
  * Identical to v7 rindex, included for portability.
  */
 
-char *
-rindex(sp, c)
-     register char *sp, c;
+char *strrchr_custom(char *sp, int c)
 {
   register char *r;
 
@@ -1570,9 +1461,7 @@ rindex(sp, c)
  * Identical to v7 index, included for portability.
  */
 
-char *
-index(sp, c)
-     register char *sp, c;
+char *strchr_custom(char *sp, int c)
 {
   do
     {
@@ -1584,8 +1473,7 @@ index(sp, c)
 
 /* Print error message and exit.  */
 
-fatal (s1, s2)
-     char *s1, *s2;
+void fatal(char *s1, char *s2)
 {
   error (s1, s2);
   exit (BAD);
@@ -1593,8 +1481,7 @@ fatal (s1, s2)
 
 /* Print error message.  `s1' is printf control string, `s2' is arg for it. */
 
-error (s1, s2)
-     char *s1, *s2;
+void error(char *s1, char *s2)
 {
   fprintf (stderr, "%s: ", progname);
   fprintf (stderr, s1, s2);
@@ -1603,12 +1490,10 @@ error (s1, s2)
 
 /* Return a newly-allocated string whose contents concatenate those of s1, s2, s3.  */
 
-char *
-concat (s1, s2, s3)
-     char *s1, *s2, *s3;
+char *concat(char *s1, char *s2, char *s3)
 {
   int len1 = strlen (s1), len2 = strlen (s2), len3 = strlen (s3);
-  char *result = (char *) xmalloc (len1 + len2 + len3 + 1);
+  char *result = (char *) xmalloc(len1 + len2 + len3 + 1);
 
   strcpy (result, s1);
   strcpy (result + len1, s2);
@@ -1620,23 +1505,18 @@ concat (s1, s2, s3)
 
 /* Like malloc but get fatal error if memory is exhausted.  */
 
-int
-xmalloc (size)
-     int size;
+void *xmalloc(int size)
 {
-  int result = malloc (size);
+  void *result = malloc(size);
   if (!result)
-    fatal ("virtual memory exhausted", 0);
+    fatal("virtual memory exhausted", 0);
   return result;
 }
 
-int
-xrealloc (ptr, size)
-     char *ptr;
-     int size;
+void *xrealloc(char *ptr, int size)
 {
-  int result = realloc (ptr, size);
+  void *result = realloc(ptr, size);
   if (!result)
-    fatal ("virtual memory exhausted");
+    fatal("virtual memory exhausted", 0);
   return result;
 }
